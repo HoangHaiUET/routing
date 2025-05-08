@@ -8,36 +8,47 @@ class Router:
     changes. Subclasses should override the following methods to implement routing
     algorithm functionalities:
 
+    Lớp Router quản lý các liên kết đến các thiết bị khác, nhận và gửi gói tin, đồng thời cung cấp các hàm cần ghi đè để bạn có thể tự triển khai thuật toán định tuyến của riêng mình.
+
     - __init__
-    - handle_packet
-    - handle_new_link
-    - handle_remove_link
-    - handle_time
-    - __repr__ (optional, for your own debugging)
+    - handle_packet : 	Xử lý gói tin đến. Mặc định là gửi ngược lại như boomerang.
+    - handle_new_link : 	Khi có liên kết mới xuất hiện → dùng để cập nhật bảng định tuyến hoặc gửi thông báo.
+    - handle_remove_link : 	Khi một liên kết bị mất. Bạn cần cập nhật lại thông tin định tuyến tương ứng.
+    - handle_time : Hàm được gọi định kỳ để gửi thông tin định tuyến (VD: bản tin DV hoặc LS).
+    - __repr__ (optional, for your own debugging) : Trả về chuỗi hiển thị router trên trình giả lập đồ họa.
 
     Parameters
     ----------
     addr
-        The address of this router.
+        The address of this router. : Địa chỉ của Router
     heartbeat_time
-        Routing information should be sent at least once every heartbeat_time ms.
+        Routing information should be sent at least once every heartbeat_time ms. : Thông tin của router nên được gửi trong ít nhất heartbeat_time
     """
 
     def __init__(self, addr, heartbeat_time=None):
         self.addr = addr
-        self.links = {}  # Links indexed by port
-        self.link_changes = queue.Queue()  # Thread-safe queue for link changes
+        self.links = {}  # Links indexed by port - Danh sách các liên kết theo port 
+        self.link_changes = queue.Queue()  # Thread-safe queue for link changes - hàng đợi lưu các thay đổi liên kết (thêm/xoá)
         self.keep_running = True
 
     def change_link(self, change):
         """Add, remove, or change the cost of a link.
 
         The `change` argument is a tuple with first element being "add" or "remove".
+        
+        Dùng để yêu cầu router xử lý thay đổi mạng (thêm/xoá đường liên kết).
+
+
         """
         self.link_changes.put(change)
 
     def add_link(self, port, endpointAddr, link, cost):
-        """Add new link to router."""
+        """Add new link to router.
+
+        Thêm liên kết vào bảng links
+
+        Gọi các hàm handle_new_link và handle_remove_link để cập nhật logic định tuyến
+        """
         if port in self.links:
             self.remove_link(port)
         self.links[port] = link
@@ -49,7 +60,13 @@ class Router:
         self.handle_remove_link(port)
 
     def run(self):
-        """Main loop of router."""
+        """Main loop of router.
+        Cập nhật theo thời gian (handle_time)
+
+        Kiểm tra xem có gói tin mới đến từ mỗi port hay không → gọi handle_packet
+
+        Xử lý các thay đổi liên kết nếu có trong hàng đợi
+        """
         while self.keep_running:
             time.sleep(0.1)
             time_ms = int(round(time.time() * 1000))
@@ -148,5 +165,7 @@ class Router:
         behavior can be controlled by this magic method. Return any string that will be
         helpful for debugging. NOTE: This method is for your own convenience and will
         not be graded.
+
+        Trả về chuỗi hiển thị router trên trình giả lập đồ họa.
         """
         return f"Router(addr={self.addr})"
